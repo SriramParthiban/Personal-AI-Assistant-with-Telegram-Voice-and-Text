@@ -1,0 +1,463 @@
+{
+  "name": "Personal AI Assistant with Telegram Voice and Text",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "labelIds": [
+            "INBOX",
+            "UNREAD"
+          ],
+          "readStatus": "unread",
+          "receivedAfter": "={{$fromAI(\"date\",\"the date after which to fetch the messages in format YYYY-MM-DDTHH:MM:SS\")}}"
+        }
+      },
+      "id": "fa955731-86f6-4e4d-8604-dab5f52dee87",
+      "name": "Get Email",
+      "type": "n8n-nodes-base.gmailTool",
+      "position": [
+        2208,
+        448
+      ],
+      "typeVersion": 2.1,
+      "webhookId": "3ae0b8e6-f9fd-4c64-9451-73af7837ab82",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "cx4xJr91Npz8meGs",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "46511f47-1687-4cbe-ae41-ceb205ed1f11",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1040,
+        480
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "openAiApi": {
+          "id": "vwOhvTYYiXxP5lkx",
+          "name": "OpenAi account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "a0bf9719-4272-46f6-ab3b-eda6f7b44fd8",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json.message.text }}",
+              "rightValue": ""
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e791d4f8-2c19-4c14-a71e-39a04f22e944",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        1344,
+        112
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "id": "5bd1788a-3d08-4eb3-8e03-3ce82f44d2a7",
+      "name": "Speech to Text",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        1824,
+        -80
+      ],
+      "typeVersion": 1.3,
+      "credentials": {
+        "openAiApi": {
+          "id": "vwOhvTYYiXxP5lkx",
+          "name": "OpenAi account 5"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "text",
+              "stringValue": "={{ $json?.message?.text || \"\" }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b67a2a93-517b-469e-aaa4-32c422710743",
+      "name": "Voice or Text",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1040,
+        240
+      ],
+      "typeVersion": 3.2
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "id": "8105c39f-9e87-44c4-9215-b3777f0b4164",
+      "name": "Get Voice File",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        1520,
+        -80
+      ],
+      "typeVersion": 1.1,
+      "webhookId": "34321ab6-58f4-4037-a321-478ff833beee",
+      "credentials": {
+        "telegramApi": {
+          "id": "Gea6W0VrWEZn24q4",
+          "name": "Assistant Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "databaseId": 146496,
+        "tableId": 372174,
+        "returnAll": "={{ $fromAI('Return_All', ``, 'boolean') }}",
+        "additionalOptions": {}
+      },
+      "id": "40e92679-b47a-4213-bb23-3f8d086459f2",
+      "name": "Tasks",
+      "type": "n8n-nodes-base.baserowTool",
+      "position": [
+        1632,
+        464
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "baserowApi": {
+          "id": "PybArDVjEgJDyP4Q",
+          "name": "Baserow account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Useful for getting contact information.  For example emails or phone numbers.",
+        "databaseId": 146496,
+        "tableId": 372177,
+        "additionalOptions": {}
+      },
+      "id": "570a0647-b571-4ebc-9dfe-40244b5a0b2a",
+      "name": "Contacts",
+      "type": "n8n-nodes-base.baserowTool",
+      "position": [
+        1920,
+        464
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "baserowApi": {
+          "id": "PybArDVjEgJDyP4Q",
+          "name": "Baserow account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "=You are a helpful assistant.\n\nToday's date is {{ $now }}.\n\nGuidelines:\n- When fetching emails, filter out any promotional emails. \n- When summarizing emails, include Sender, Message date, subject, and brief summary of email.\n- if the user did not specify a date in the request assume they are asking for today\n- Use baserow tool to answer questions about tasks\n- When answering questions about calendar events, filter out events that don't apply to the question.  For example, the question is about events for today, only reply with events for today. Don't mention future events if it's more than 1 week away"
+        }
+      },
+      "id": "759b975f-d17c-4386-a5b3-12413f0361f4",
+      "name": "AI Assistant",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        2096,
+        128
+      ],
+      "typeVersion": 1.6
+    },
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        816,
+        240
+      ],
+      "id": "f262f7de-9bcb-4893-b147-fc8c69ea892e",
+      "name": "Telegram Trigger",
+      "webhookId": "efab673d-425c-43d3-85c4-8d21c9d2cd5b",
+      "credentials": {
+        "telegramApi": {
+          "id": "Gea6W0VrWEZn24q4",
+          "name": "Assistant Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.text }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1328,
+        480
+      ],
+      "id": "e8c3c8c5-6466-40d2-b1d3-15ee79be7124",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "e35c04ff-a050-4564-8c1b-5b22b556872f",
+      "name": "Send a text message",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2784,
+        240
+      ],
+      "typeVersion": 1.1,
+      "webhookId": "9ad0af9f-736e-4180-a000-f5ae1eebb21d",
+      "credentials": {
+        "telegramApi": {
+          "id": "Gea6W0VrWEZn24q4",
+          "name": "Assistant Bot"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "sriramparthiban1970@gmail.com",
+          "mode": "list",
+          "cachedResultName": "sriramparthiban1970@gmail.com"
+        },
+        "options": {
+          "timeMin": "={{$fromAI(\"date\",\"the date after which to fetch the messages in format YYYY-MM-DDTHH:MM:SS\")}}",
+          "fields": "=items(summary, start(dateTime))"
+        }
+      },
+      "id": "c70236ea-91ab-4e47-b6f6-63a70ede5d3c",
+      "name": "Get many events in Google Calendar",
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "position": [
+        2480,
+        448
+      ],
+      "typeVersion": 1.1,
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "X7LYYCgMDcIN9LkO",
+          "name": "Google Calendar account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Get Voice File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tasks": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contacts": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Email": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice or Text": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Voice File": {
+      "main": [
+        [
+          {
+            "node": "Speech to Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Speech to Text": {
+      "main": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Assistant": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Voice or Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many events in Google Calendar": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Assistant",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "fbd962e4-df8f-47fd-9e8f-9cfc3401e487",
+  "meta": {
+    "templateId": "2462",
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0bc77d1e83eb271c93d761935713d306621ca9e7f4a7a40c1c9c6764db49cd61"
+  },
+  "id": "O2rE0zu5CV8iNZlp",
+  "tags": [
+    {
+      "createdAt": "2025-08-12T14:40:02.164Z",
+      "updatedAt": "2025-08-12T14:40:02.164Z",
+      "id": "f9xUsJPorlULGamR",
+      "name": "Working"
+    }
+  ]
+}
